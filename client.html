@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html>
+   <head>
+   <title> NodeJS Chat Room </title>
+    <link rel="stylesheet" type="text/css" href="chatroom.css">
+      <script src="/socket.io/socket.io.js"></script>
+      <script src="http://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+      <style>
+    * { margin: 0; padding: 0; }
+    body{font: 15px Helvetica;}
+    .bottomDiv{ background: blue; padding: 5px; position: fixed; bottom: 0; width: 100%;}
+    #message_input {border: 0; padding: 10px; width: 80%; margin-right: .5%;}
+    #sendButton {width: 9%; background: rgb (120. 238. 212); padding: 10px;}
+    #sendPrivate {width: 5%; background: rgb (120. 238. 212); padding: 10px; align: right;}
+    #messages {list-style-type: none; text-indent: 100px;}
+    #messages li {padding: 5px 10px; text-indent: 100px;}
+    #messages li:nth-child {background: #eee; text-indent: 100px;}
+    .center{text-align: center;}
+    .bottomright {
+    position: absolute;
+    bottom: 50px;
+    right: 16px;
+    font-size: 15px;}
+    .right{text-align: right; margin-right: 125px;}
+    .darkMode{background-color: black; color: white;}
+    .left{text-align: left; font-size: 20px;}
+    .text{font-size: 20px;}
+    .fixed{text-align: left; margin-left: 240px;}
+    .online{text-align: right; margin-right: 25px;}
+    .horizLine{right: 20%%}
+    .vl{border-left: 6px solid black;
+  height: 1000px;
+  position: absolute;
+  left: 13%;
+  margin-left: -3px;
+  top: 0;}
+  .rvl{border-right: 6px solid black;
+  height: 1000px;
+  position: absolute;
+  right: 20%;
+  margin-left: -3px;
+  top: 0;}
+    </style>
+      <script type ="text/javascript">
+        var username = "guest";
+        var publicName = "empty";
+        var privateName = "private";
+        var privatePass = "private pass";
+        var privateMsg = "private message";
+        var chatJoin = "potato";
+        var tempBan = "tempBan";
+        var permBan = "permBan";
+        var tempRoom = "tempRoom";
+        var permRoom = "permRoom";
+        var socketio = io.connect();
+
+      socketio.on("message_to_client",function(data) {
+          console.log("MADE IT TO MESSAGE CLIENT: " + data["message"]);
+         //Append an HR thematic break and the escaped HTML of the new message
+         console.log("PUBLIC NAME TEST: " + publicName);
+         console.log("data['room]': " + data["room"]);
+        if(publicName == data["room"]){
+        console.log("It broke");
+         document.getElementById("chatlog").appendChild(document.createElement("hr"));
+         document.getElementById("chatlog").appendChild(document.createTextNode(data["username"] + ": " + data['message']));
+         }
+        if(privateName == data["privateName"]){
+        console.log("PRIVATE ROOM CHATSSSS");
+         document.getElementById("chatlog").appendChild(document.createElement("hr"));
+         document.getElementById("chatlog").appendChild(document.createTextNode(data["username"] + ": " + data['message']));
+         }
+         if(data["message"] == "/commands")
+         {
+         document.getElementById("chatlog").appendChild(document.createElement("hr"));
+         document.getElementById("chatlog").appendChild(document.createTextNode("COMMAND LIST: /darkmode (inverts colors)"));
+         document.getElementById("chatlog").appendChild(document.createElement("hr"));
+         document.getElementById("chatlog").appendChild(document.createTextNode("/private (send private message)"));
+         document.getElementById("chatlog").appendChild(document.createElement("hr"));
+         document.getElementById("chatlog").appendChild(document.createTextNode("/tatreat (for a ta treat (: )"));
+         document.getElementById("chatlog").appendChild(document.createElement("hr"));
+         document.getElementById("chatlog").appendChild(document.createTextNode("/joinpublic (join public room)"));
+         document.getElementById("chatlog").appendChild(document.createElement("hr"));
+         document.getElementById("chatlog").appendChild(document.createTextNode("/joinprivate (join private room)"));
+         }
+         if(data["message"] == "/darkmode"){
+             console.log("Dark Mode");
+             var pageBody = document.body;
+             pageBody.classList.toggle('darkMode');
+             }
+         if(data["message"] == "/private" && data["username"] == username){
+             sendPrivate();
+         }
+         if(data["message"] == "/tatreat"){
+             document.getElementById("chatlog").appendChild(document.createElement("hr"));
+             document.getElementById("chatlog").appendChild(document.createTextNode("There once was a TA. They were grading this module. They gave the students 100s.  Students were very happy. xoxo. Luke and Eric"));
+         }
+         if(data["message"] == "/joinpublic"){
+             alertJoin();
+         }
+         if(data["message"] == "/joinprivate"){
+             textPrivate();
+         }
+         document.getElementById('message_input').value = "";
+      });
+
+      function sendMessage(){
+         var msg = document.getElementById("message_input").value;
+         socketio.emit("message_to_server", {user: username, message:msg, currentRoom: publicName, privateRoom: privateName});
+      }
+
+ function registration(){
+        username = document.getElementById("name").value;
+        socketio.emit('register', {user: username});
+    }
+    socketio.on("registerClient", function(data){
+        console.log("Client: " + data["username"]);
+        document.getElementById("chatlog").appendChild(document.createElement("br"))
+        document.getElementById("chatlog").appendChild(document.createTextNode(data['username'] + " connected"));
+        document.getElementById("chatrooms").appendChild(document.createTextNode(data["roomDisplay"]));
+        document.getElementById("privateChatrooms").appendChild(document.createTextNode(data["privateDisplay"]));
+        console.log(data['user']);
+    })
+
+    //function seeUsers(){
+    //    socketio.emit('onlineUsers')
+    //}
+    function alertJoin(){
+        chatJoin = prompt("What is the name of the public chatroom you wish to join?");
+        socketio.emit('joinChat', {desiredRoom: chatJoin});
+    }
+    function textPrivate(){
+        privateName = prompt("Enter name of private chat you wish to join");
+        privatePass = prompt("Enter password for chatroom");
+        socketio.emit('privateJoin', {privateGroup: privateName, privatePassword: privatePass});
+    }
+    function createPublic(){
+        publicName = prompt("Enter Public Chatroom Name");
+        socketio.emit('public', {publicRoom: publicName, user: username});
+    }
+    socketio.on("publicClient", function(data){
+        console.log("Made it back: " + data["publicRoom"]);
+        document.getElementById("chatrooms").appendChild(document.createElement("br"))
+        document.getElementById("chatrooms").appendChild(document.createTextNode(data["publicRoom"]));
+        document.getElementById("chatrooms").appendChild(document.createElement("br"))
+    })
+    function createPrivate(){
+        privateName = prompt("Enter Private Chatroom Name");
+        privatePassword = prompt("Enter Password for Chatroom");
+        socketio.emit('private', {privateRoom: privateName, privatePass: privatePassword, user: username});
+    }
+    socketio.on("privateClient", function(data){
+        console.log("Made it back");
+        document.getElementById("privateChatrooms").appendChild(document.createElement("br"));
+        document.getElementById("privateChatrooms").appendChild(document.createTextNode(data["privateRoom"]));
+    })
+
+    function disconnect(){
+        console.log("Disconnecting....");
+        username = document.getElementById("name").value;
+        socketio.emit('logout', {user: username});
+    }
+    socketio.on("disconnectClient", function(data){
+        console.log("Made it back");
+        document.getElementById("chatlog").appendChild(document.createElement("br"));
+        document.getElementById("chatlog").appendChild(document.createTextNode(data['username'] + " disconnected....."));
+        data["username"] = "Guest";
+        username = "guest";
+        console.log("New Username: " + data["username"]);
+    })
+
+    function sendPrivate(){
+        privateUser = prompt("Enter the user you wish to send private message to");
+        privateMsg = prompt("What would you like your message to be?");
+        username = document.getElementById("name").value;
+        socketio.emit('privateMessage', {privateUser: privateUser, privateMessage: privateMsg, name: username});
+    }
+    socketio.on("msgClient", function(data){
+        console.log("fucking work god damnit");
+        console.log("Private Message: " + data["privateMsg"]);
+        if(data["sender"] == username || data["privateUser"] == username){
+        document.getElementById("private").appendChild(document.createElement("br"));
+        document.getElementById("private").appendChild(document.createTextNode(data["sender"] + " (private): " + data["privateMsg"]));
+        }
+    });
+
+    function joinChat(){
+        console.log("Client side join chat");
+        chatJoin = document.getElementById("joinPublic").value;
+        socketio.emit('joinChat', {desiredRoom: chatJoin});
+    }
+    socketio.on("joinClient", function(data){
+        document.getElementById("chatlog").appendChild(document.createElement("br"));
+        document.getElementById("chatlog").appendChild(document.createTextNode(data["currentUser"] + " joined " + data["roomName"]));
+        console.log("USERNAME: " + username);
+        if(username == data["currentUser"]){
+        console.log("almost there lukey");
+        document.getElementById("currentChat").remove();
+        var div = document.createElement("div");
+        div.setAttribute("id", "currentChat");
+        div.appendChild(document.createTextNode(data["roomName"]));
+        document.getElementById("currentRoom").appendChild(div);
+        publicName = data["roomName"];
+        $(".hide").show();
+        }
+    })
+
+    function joinPrivate(){
+        privateName = document.getElementById("joinPrivate").value;
+        privatePass = prompt("Enter password for chatroom");
+        socketio.emit('privateJoin', {privateGroup: privateName, privatePassword: privatePass});
+    }
+    socketio.on("joinPrivateClient", function(data){
+        document.getElementById("chatlog").appendChild(document.createElement("br"));
+        document.getElementById("chatlog").appendChild(document.createTextNode(data["currentUser"] + " joined " + data["roomName"] + " private room"));
+        if(username == data["currentUser"]){
+        console.log("almost there lukey");
+        document.getElementById("currentChat").appendChild(document.createTextNode(data["roomName"]));
+        privateName = data["roomName"];
+        $(".hide").show();
+        }
+    })
+    function showUsers(){
+        console.log("Show Users");
+        username = document.getElementById("name").value;
+        socketio.emit('displayUsers', {user: username, currentRoom: publicName});
+    }
+    socketio.on("displayClient", function(data){
+        console.log("Made it back: " + data["displayUsers"]);
+        for(var x = 0; x < data["displayUsers"].length; x++){
+        console.log("for loop: " + data["displayUsers"][x]);
+        if(username == data["displayUsers"][x]){
+        console.log("Almost working");
+        document.getElementById("userLog").appendChild(document.createElement("br"))
+        document.getElementById("userLog").appendChild(document.createTextNode(data["displayUsers"]));
+        }
+        }
+    })
+
+    function tempBanUser(){
+        tempBan = document.getElementById("bannedUser").value;
+        tempRoom = document.getElementById("roomBan").value;
+        socketio.emit('temporaryBan', {tempUser: tempBan, roomBan: tempRoom});
+    }
+    socketio.on("tempClient", function(data){
+        console.log("made it back, temp banned user: " + data["tempBan"]);
+        document.getElementById("chatlog").appendChild(document.createElement("br"))
+        document.getElementById("chatlog").appendChild(document.createTextNode(data["tempBan"] + " is temporarily banned"));
+        if(data["tempBan"] == username){
+        document.getElementById("currentChat").remove();
+        var div = document.createElement("div");
+        div.setAttribute("id", "currentChat");
+        div.appendChild(document.createTextNode("Open Room"));
+        document.getElementById("currentRoom").appendChild(div);
+        }
+    })
+    function permBanUser(){
+        permBan = document.getElementById("bannedUser").value;
+        permRoom = document.getElementById("roomBan").value;
+        socketio.emit('permanentBan', {permUser: permBan, roomBan: permRoom});
+    }
+    socketio.on("permClient", function(data){
+        console.log("made it back, perm banned user: " + data["permBan"]);
+        document.getElementById("chatlog").appendChild(document.createElement("br"))
+        document.getElementById("chatlog").appendChild(document.createTextNode(data["permBan"] + " is permanently banned from " + data["permRoom"]));
+        console.log("USERNAME: " + username);
+        console.log("permBan: " + data["permBan"]);
+        if(data["permBan"] == username){    //fix
+        console.log("changing for banned users");
+        document.getElementById("currentChat").remove();
+        var div = document.createElement("div");
+        div.setAttribute("id", "currentChat");
+        div.appendChild(document.createTextNode("Open Room"));
+        document.getElementById("currentRoom").appendChild(div);
+        }
+    })
+    socketio.on("failedPublic", function(data){
+        document.getElementById("chatlog").appendChild(document.createElement("br"))
+        document.getElementById("chatlog").appendChild(document.createTextNode("YOU ARE BANNED FROM THIS GROUP SUCKER"));
+    })
+
+    socketio.on("failedJoin", function(data){
+        document.getElementById("chatlog").appendChild(document.createElement("br"))
+        document.getElementById("chatlog").appendChild(document.createTextNode("Incorrect Name/Password"));
+    })
+    //code from https://www.webtrickshome.com/faq/how-to-display-uploaded-image-in-html-using-javascript
+    var loadFile = function(event) {
+	var image = document.getElementById('output');
+	image.src = URL.createObjectURL(event.target.files[0]);
+    }
+    window.onload = function(){
+     $(".hide").hide();
+}
+      </script>
+   </head>
+   <body class = "body">
+   <div class = "left text">
+    <button id = "disconnect" class = "left" value = "Disconnect" onclick = "disconnect()"> Disconnect </button>
+    <br>
+    
+   
+    <button id = "profile" value = "Upload Profile Pic" onclick="document.getElementById('file-input').click();"> Upload Profile Pic </button>
+    <br>
+    <br>
+    <br>
+    <input id= "file-input" type="file" name="name" style="display: none;" onchange = "loadFile(event)" />
+     <div class="pImage"  style="width: 12%; left: 10px;">
+    <img id = "output" width = "150" style="margin-left: 10px; border-radius: 60%"/> 
+    </div>
+   </div>
+
+   <div class = "right text">
+   <h3> Private Messages </h3>
+   <br>
+   
+   <ul id = "private">
+   <li>
+   </li>
+   </ul>
+   </div>
+   <div class = "center text">
+   <h1> NodeJS Chat Server </h1>
+   <h2 id = "currentRoom"> Current Chatroom: <div id = "currentChat"> </div> </h2>
+   <input id = "name" type = "text" placeholder = "Username" class = "center"/>
+   <button id = "register" class = "center" value = "Create Account" onclick = "registration()"> Create Account </button>
+   </div>
+   <div class = "left">
+   <button id = "publicChat" onclick = "createPublic()" value = "Create Private Chatroom"> Create Public Chatroom </button>
+   <br>
+   <button id = "privateChat" onclick = "createPrivate()" value = "Create Private Chatroom"> Create Private Chatroom </button>
+   <br>
+   <input id = "joinPublic" type = "text" placeholder = "Join Public Chat Room"/>
+   <button id = "join" onclick = "joinChat()" value = "Join Chat"> Join Public </button>
+   <br>
+   <input id = "joinPrivate" type = "text" placeholder = "Join Private Chat Room"/>
+   <button id = "join" onclick = "joinPrivate()" value = "Join Chat"> Join Private </button>
+   <ul id = "chatrooms"> Public Chatrooms
+    <li>
+    </li>
+   </ul>
+   <hr width = "225px;">
+   <ul id = "privateChatrooms"> Private Chatrooms
+    <li>
+    </li>
+   </ul>
+   <hr width = "225px;">
+   <div class = "online text">
+   <h3> Current Users in Room </h3>
+   <button id = "showUsers" onclick = "showUsers()" value = "Show Users in Chat"> Show Users in Chat </button>
+   <br>
+    </div>
+    <div class = "bottomright">
+   <h3> Ban Users </h3> <br>
+   <input id = "bannedUser" type = "text" placeholder = "User to Ban"/>
+   <br>
+   <input id = "roomBan" type = "text" placeholder = "Current Ban User Room"/>
+   <br>
+   <button id = "tempBan" onclick = "tempBanUser()" value = "Temporarily Ban"> Temporarily Ban User </button>
+   <button id = "permBan" onclick = "permBanUser()" value = "Permanently Ban"> Permanently Ban User </button>
+    </div>
+   <ul id = "userLog" class = "online text"> </div>
+   <li>
+   </li>
+   </ul>
+   <div class = "vl"> </div>
+   <div class = "rvl"> </div>
+   </div>
+      <ul id = "messages"> </ul>
+      <div class="bottomDiv">
+      <div class = "hide">
+      <input type= "text" id="message_input"/>
+      <button id= "sendButton" onclick="sendMessage()">Send</button>
+      <button id = "sendPrivate" onclick = "sendPrivate()"> Send Private </button>
+      </div>
+      </div>
+      <div id="chatlog" class = "fixed"></div>
+      
+   </body>
+</html>
